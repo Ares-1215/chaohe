@@ -46,6 +46,27 @@ tr.total td{background:var(--soft);font-weight:700}
 .chip.off{opacity:.35}
 #msg{color:var(--red);font-size:13px;min-height:18px}
 .mono{font-variant-numeric:tabular-nums}
+/* 日曆 */
+.range{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cal{width:330px;flex:none;border:1px solid var(--line);border-radius:10px;padding:10px 12px 8px;background:#fff;user-select:none}
+.cal .nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cal .nav b{font-size:16px}
+.cal .nav button{padding:2px 10px;font-size:16px;line-height:1.4}
+.cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal .wd{font-size:12px;color:var(--sub);padding:4px 0}
+.cal .d{border-radius:8px;padding:5px 0 3px;font-size:14px;cursor:default;color:#b6c0cd;position:relative;line-height:1.2}
+.cal .d.has{color:var(--ink);font-weight:700;cursor:pointer}
+.cal .d.has:hover{background:var(--soft)}
+.cal .d.sel{background:var(--accent2);color:#fff}
+.cal .d.today{outline:2px solid var(--accent2);outline-offset:-2px}
+.cal .d i{display:block;width:7px;height:7px;border-radius:50%;margin:3px auto 0;background:transparent}
+.cal .d.sel i{box-shadow:0 0 0 1.5px #fff}
+.cal .foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--sub);margin-top:6px;border-top:1px solid var(--line);padding-top:6px;flex-wrap:wrap;gap:6px}
+.cal .foot i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px 0 6px;vertical-align:0}
+.cal .foot button{padding:2px 8px;font-size:12px}
+.rpanel{flex:1;min-width:260px}
+.rpanel .sel{font-size:15px;font-weight:700;margin-bottom:8px}
+@media(max-width:700px){ .cal{width:100%} }
 @media(max-width:640px){ header h1{font-size:16px} .kpi .v{font-size:20px} }
 </style>
 </head>
@@ -62,14 +83,22 @@ tr.total td{background:var(--soft);font-weight:700}
     <h2>檢視範圍
       <span class="seg" id="modeSeg"><button data-m="day" class="on">單日</button><button data-m="month">整月</button></span>
       <span class="right">
-        <select id="daySel"></select>
-        <select id="monSel" style="display:none"></select>
         <button class="pri" id="xlsBtn">⬇ 匯出 Excel</button>
       </span>
     </h2>
-    <div class="chips" id="chips"></div>
-    <div class="kpis" id="kpis"></div>
-    <div id="msg"></div>
+    <div class="range">
+      <div class="cal" id="cal">
+        <div class="nav"><button id="calPrev">‹</button><b id="calTitle"></b><button id="calNext">›</button></div>
+        <div class="grid" id="calGrid"></div>
+        <div class="foot"><span id="calLegend"></span><span id="calSum"></span><button id="calLatest">最新</button></div>
+      </div>
+      <div class="rpanel">
+        <div class="sel" id="selLabel"></div>
+        <div class="chips" id="chips"></div>
+        <div class="kpis" id="kpis"></div>
+        <div id="msg"></div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -106,6 +135,43 @@ const fmt = n => Number(n||0).toLocaleString();
 const WD = "日一二三四五六";
 const md = d => d.slice(5).replace("-","/");
 let DATES = [], MODE = "day", ROWS = [], HIDE = new Set();
+let SEL_DAY = "", CAL_YM = "";   // 選中的日期 / 日曆顯示的年月（YYYY-MM）
+const DMAP = {};                 // date -> {n,pcs}
+const dotColor = pcs => (DOT_LEVELS.find(l=>pcs>=l.min)||{}).color || null;
+
+/* ── 日曆 ── */
+function renderCal(){
+  const [y,m] = CAL_YM.split("-").map(Number);
+  $("calTitle").textContent = `${y}年${m}月`;
+  const first = new Date(y, m-1, 1), days = new Date(y, m, 0).getDate();
+  const today = new Date(); const tkey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  let h = "日一二三四五六".split("").map(w=>`<div class="wd">${w}</div>`).join("");
+  for(let i=0;i<first.getDay();i++) h += "<div></div>";
+  let n=0, pcs=0;
+  for(let d=1; d<=days; d++){
+    const key = `${CAL_YM}-${String(d).padStart(2,"0")}`, info = DMAP[key];
+    const cls = ["d", info?"has":"", key===SEL_DAY&&MODE==="day"?"sel":"", key===tkey?"today":""].join(" ");
+    const tip = info ? `${key.replace(/-/g,"/")}：${info.n} 筆 ${info.pcs} 件` : "";
+    if(info){ n+=info.n; pcs+=info.pcs; }
+    h += `<div class="${cls}" data-d="${key}" title="${tip}">${d}<i style="background:${info?dotColor(info.pcs):"transparent"}"></i></div>`;
+  }
+  $("calGrid").innerHTML = h;
+  $("calGrid").querySelectorAll(".d.has").forEach(el=>el.onclick=()=>{ SEL_DAY = el.dataset.d; setMode("day"); });
+  $("calSum").textContent = n ? `本月 ${n} 筆 ${pcs} 件` : "本月無資料";
+  $("calLegend").innerHTML = DOT_LEVELS.map(l=>`<i style="background:${l.color}"></i>${l.label}`).join("");
+}
+$("calPrev").onclick = ()=>{ shiftMonth(-1); };
+$("calNext").onclick = ()=>{ shiftMonth(1); };
+function shiftMonth(k){
+  const [y,m] = CAL_YM.split("-").map(Number); const d = new Date(y, m-1+k, 1);
+  CAL_YM = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  if(MODE==="month") load(); else renderCal();
+}
+$("calLatest").onclick = ()=>{ if(!DATES.length) return; SEL_DAY = DATES[DATES.length-1].date; CAL_YM = SEL_DAY.slice(0,7); setMode("day"); };
+function setMode(m){
+  MODE = m; $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.m===m));
+  load();
+}
 
 async function api(body, tries=3){
   for(let i=1;;i++){
@@ -122,13 +188,14 @@ function sortRows(rows){
   const ri = r => { const i = REGION_ORDER.indexOf(r.region); return i<0?99:i; };
   return rows.slice().sort((a,b)=> (a.ship_date>b.ship_date)-(a.ship_date<b.ship_date) || ri(a)-ri(b) || (parseInt(a.code||"9999")-parseInt(b.code||"9999")) || a.station.localeCompare(b.station,"zh-Hant") || a.invoice_no.localeCompare(b.invoice_no));
 }
-function label(){ return MODE==="day" ? $("daySel").value : $("monSel").value; }
+function label(){ return MODE==="day" ? SEL_DAY : CAL_YM; }
 async function load(){
   $("msg").textContent = "";
+  renderCal();
   try{
     let from,to;
-    if(MODE==="day"){ from=to=$("daySel").value; }
-    else { const m=$("monSel").value; from=m+"-01"; const d=new Date(+m.slice(0,4), +m.slice(5,7), 0); to=m+"-"+String(d.getDate()).padStart(2,"0"); }
+    if(MODE==="day"){ from=to=SEL_DAY; $("selLabel").textContent = SEL_DAY ? `${SEL_DAY.replace(/-/g,"/")}（週${WD[new Date(SEL_DAY).getDay()]}）` : "請在日曆點選有資料的日期"; }
+    else { const m=CAL_YM; from=m+"-01"; const d=new Date(+m.slice(0,4), +m.slice(5,7), 0); to=m+"-"+String(d.getDate()).padStart(2,"0"); $("selLabel").textContent = `${m.replace("-","年")}月 整月`; }
     if(!from){ ROWS=[]; render(); return; }
     const res = await api({action:"range", from, to});
     ROWS = sortRows(enrich(res.rows));
@@ -179,23 +246,19 @@ function render(){
 }
 
 /* ── 控制 ── */
-$("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
-  MODE=b.dataset.m; $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
-  $("daySel").style.display = MODE==="day"?"":"none"; $("monSel").style.display = MODE==="month"?"":"none"; load();
-});
-$("daySel").onchange = load; $("monSel").onchange = load;
+$("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 
 async function boot(){
+  const t = new Date(); CAL_YM = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}`;
   try{
     const res = await api({action:"dates"});
     DATES = res.dates;
-    if(!DATES.length){ $("msg").textContent="尚無資料，請先對 Claude 說「更新朝和」。"; return; }
-    $("daySel").innerHTML = DATES.slice().reverse().map(d=>`<option value="${d.date}">${d.date.replace(/-/g,"/")}（週${WD[new Date(d.date).getDay()]}）${d.n} 筆 ${d.pcs} 件</option>`).join("");
-    const mons = [...new Set(DATES.map(d=>d.date.slice(0,7)))].sort().reverse();
-    $("monSel").innerHTML = mons.map(m=>`<option value="${m}">${m.replace("-","年")}月</option>`).join("");
-    $("upd").textContent = "最新資料 "+DATES[DATES.length-1].date.replace(/-/g,"/");
+    for(const d of DATES) DMAP[d.date] = {n:d.n, pcs:d.pcs};
+    if(!DATES.length){ renderCal(); $("msg").textContent="尚無資料，請先對 Claude 說「更新朝和」。"; return; }
+    SEL_DAY = DATES[DATES.length-1].date; CAL_YM = SEL_DAY.slice(0,7);
+    $("upd").textContent = "最新資料 "+SEL_DAY.replace(/-/g,"/");
     load();
-  }catch(e){ $("msg").textContent="讀取失敗："+e.message; }
+  }catch(e){ renderCal(); $("msg").textContent="讀取失敗："+e.message; }
 }
 boot();
 

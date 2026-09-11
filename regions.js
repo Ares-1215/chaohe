@@ -1,12 +1,12 @@
 /* 到著站 → 分區／到著簡碼 對照（來源：桌面「新竹物流各區.xlsx」；要改分區就改這裡） */
 window.REGION_ORDER = ["北一區","北二區","桃竹區","中區","彰嘉區","南區","未分區"];
 window.REGION_COLOR = {
-  "北一區":"FFD966",  // 黃
-  "北二區":"F4B183",  // 橘
-  "桃竹區":"A9D18E",  // 綠
-  "中區":  "9DC3E6",  // 藍
-  "彰嘉區":"FF9AC8",  // 粉紅
-  "南區":  "B4A7D6",  // 紫
+  "北一區":"FFE066",  // 黃
+  "北二區":"F28B82",  // 紅（原本橘色和黃太接近，2026-09-11 改）
+  "桃竹區":"9FD48A",  // 綠
+  "中區":  "8FBCE8",  // 藍
+  "彰嘉區":"F7A8D8",  // 粉紅
+  "南區":  "B39DDB",  // 紫
   "未分區":"D9D9D9",  // 灰
 };
 window.STATION_REGION = {
@@ -24,6 +24,12 @@ window.STATION_CODE = {
   "台中":"4","豐原":"41","烏日":"42","五權":"425","大里":"43","梧棲":"466",
   "彰化":"5","和美":"51","台南":"73","安平":"74","三民":"825","花蓮":"92","台東":"93",
 };
+/* 日曆圓點：依當日件數分色（由大到小比對，第一個符合的就用） */
+window.DOT_LEVELS = [
+  { min: 100, color: "#e05252", label: "≥100 件" },
+  { min: 50,  color: "#e8b400", label: "50～99 件" },
+  { min: 1,   color: "#2e9e6b", label: "＜50 件" },
+];
 window.normStation = s => String(s||"").trim().replace(/臺/g,"台");
 window.regionOf = s => window.STATION_REGION[window.normStation(s)] || "未分區";
 window.codeOf = s => window.STATION_CODE[window.normStation(s)] || "";
