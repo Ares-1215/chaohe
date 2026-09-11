@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>朝和餅舖 出貨分區統計</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥮</text></svg>">
+<style>
+:root{
+  --bg:#f4f6f9; --card:#fff; --ink:#17212e; --sub:#4f6076; --line:#dde4ec;
+  --accent:#7a3b1e; --accent2:#a0522d; --soft:#f7f1ec; --red:#a32222;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Microsoft JhengHei","微軟正黑體",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+header{background:var(--accent);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:19px;margin:0;font-weight:700}
+header .tag{font-size:12px;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:99px}
+main{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 12px;color:var(--accent);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+button{font-family:inherit;font-size:14px;padding:7px 14px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;transition:.15s}
+button:hover{border-color:var(--accent2);color:var(--accent2)}
+button.pri{background:var(--accent2);border-color:var(--accent2);color:#fff}
+button.pri:hover{filter:brightness(1.1);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+select,input[type=text]{font-family:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;border-radius:0;padding:6px 14px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--accent2);color:#fff}
+.right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--soft)}
+.kpi .l{font-size:12px;color:var(--sub)}
+.kpi .v{font-size:24px;font-weight:700;margin-top:2px}
+.kpi .s{font-size:12px;color:var(--sub);margin-top:2px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:center;white-space:nowrap}
+th{background:var(--accent2);color:#fff;font-weight:700;position:sticky;top:0}
+td.l{text-align:left}
+tr.total td{background:var(--soft);font-weight:700}
+.tblwrap{overflow:auto;max-height:70vh}
+.hint{font-size:13px;color:var(--sub);line-height:1.7}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
+.chip{padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;border:1px solid rgba(0,0,0,.08);cursor:pointer}
+.chip.off{opacity:.35}
+#msg{color:var(--red);font-size:13px;min-height:18px}
+.mono{font-variant-numeric:tabular-nums}
+@media(max-width:640px){ header h1{font-size:16px} .kpi .v{font-size:20px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>🥮 朝和餅舖 出貨分區統計</h1>
+  <span class="tag">客戶 05964550009</span>
+  <span class="tag">卸集：4106 彰化 74257 黃世良</span>
+  <span class="tag" id="upd"></span>
+</header>
+
+<main>
+  <div class="card">
+    <h2>檢視範圍
+      <span class="seg" id="modeSeg"><button data-m="day" class="on">單日</button><button data-m="month">整月</button></span>
+      <span class="right">
+        <select id="daySel"></select>
+        <select id="monSel" style="display:none"></select>
+        <button class="pri" id="xlsBtn">⬇ 匯出 Excel</button>
+      </span>
+    </h2>
+    <div class="chips" id="chips"></div>
+    <div class="kpis" id="kpis"></div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>分區彙總</h2>
+    <div class="tblwrap" id="regTbl"></div>
+  </div>
+
+  <div class="card" id="dayCard" style="display:none">
+    <h2>逐日彙總</h2>
+    <div class="tblwrap" id="dayTbl"></div>
+  </div>
+
+  <div class="card">
+    <h2>出貨明細 <span class="hint" id="cnt"></span></h2>
+    <div class="tblwrap" id="detTbl"></div>
+  </div>
+
+  <div class="card">
+    <h2>說明</h2>
+    <div class="hint">
+      資料來源：貨物追蹤系統「PDT員工別輸入件數查詢」→ 4106 彰化 → 74257 黃世良「卸集」明細，逐筆讀取十碼貨號託運資料，只保留客戶代號 05964550009 朝和餅舖。<br>
+      分區依「新竹物流各區」對照表（<code>regions.js</code>），到著站不在表內者列為「未分區」。<br>
+      更新方式：對 Claude 說「<b>更新朝和</b>」即可抓最新日期入庫（需先登入貨物追蹤系統）。<br>
+      本頁含收件人姓名與地址，請勿外傳網址。
+    </div>
+  </div>
+</main>
+
+<script src="regions.js"></script>
+<script>
+const EDGE = "https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/chaohe";
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n||0).toLocaleString();
+const WD = "日一二三四五六";
+const md = d => d.slice(5).replace("-","/");
+let DATES = [], MODE = "day", ROWS = [], HIDE = new Set();
+
+async function api(body, tries=3){
+  for(let i=1;;i++){
+    try{
+      const r = await fetch(EDGE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const j = await r.json(); if(!j.ok) throw new Error(j.error||"error"); return j;
+    }catch(e){ if(i>=tries || !/fetch/i.test(e.message)) throw e; await new Promise(r=>setTimeout(r,800*i)); } // 冷啟動/網路瞬斷重試
+  }
+}
+function enrich(rows){
+  return rows.map(r=>({...r, station:normStation(r.dest_station), region:regionOf(r.dest_station), code:codeOf(r.dest_station)}));
+}
+function sortRows(rows){
+  const ri = r => { const i = REGION_ORDER.indexOf(r.region); return i<0?99:i; };
+  return rows.slice().sort((a,b)=> (a.ship_date>b.ship_date)-(a.ship_date<b.ship_date) || ri(a)-ri(b) || (parseInt(a.code||"9999")-parseInt(b.code||"9999")) || a.station.localeCompare(b.station,"zh-Hant") || a.invoice_no.localeCompare(b.invoice_no));
+}
+function label(){ return MODE==="day" ? $("daySel").value : $("monSel").value; }
+async function load(){
+  $("msg").textContent = "";
+  try{
+    let from,to;
+    if(MODE==="day"){ from=to=$("daySel").value; }
+    else { const m=$("monSel").value; from=m+"-01"; const d=new Date(+m.slice(0,4), +m.slice(5,7), 0); to=m+"-"+String(d.getDate()).padStart(2,"0"); }
+    if(!from){ ROWS=[]; render(); return; }
+    const res = await api({action:"range", from, to});
+    ROWS = sortRows(enrich(res.rows));
+    render();
+  }catch(e){ $("msg").textContent = "讀取失敗："+e.message; }
+}
+function summarize(rows){
+  const by = {}; REGION_ORDER.forEach(r=>by[r]={n:0,pcs:0,st:{}});
+  for(const r of rows){ const b=by[r.region]; b.n++; b.pcs+=r.pcs||0; b.st[r.station]=(b.st[r.station]||0)+1; }
+  return by;
+}
+function render(){
+  const vis = ROWS.filter(r=>!HIDE.has(r.region));
+  const by = summarize(ROWS);
+  const tot = ROWS.length, pcs = ROWS.reduce((s,r)=>s+(r.pcs||0),0);
+  const days = new Set(ROWS.map(r=>r.ship_date)).size;
+  $("chips").innerHTML = REGION_ORDER.filter(r=>by[r].n).map(r=>`<span class="chip ${HIDE.has(r)?"off":""}" data-r="${r}" style="background:#${REGION_COLOR[r]}">${r} ${by[r].n}</span>`).join("");
+  $("chips").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ const r=c.dataset.r; HIDE.has(r)?HIDE.delete(r):HIDE.add(r); render(); });
+  $("kpis").innerHTML = [
+    ["總筆數", fmt(tot), MODE==="month"?`${days} 個出貨日`:""],
+    ["總件數", fmt(pcs), MODE==="month"&&days?`日均 ${fmt(Math.round(pcs/days))} 件`:""],
+    ["到著站數", new Set(ROWS.map(r=>r.station)).size, ""],
+    ["未分區", by["未分區"].n, by["未分區"].n?Object.keys(by["未分區"].st).join("、"):"—"],
+  ].map(([l,v,s])=>`<div class="kpi"><div class="l">${l}</div><div class="v mono">${v}</div><div class="s">${s}</div></div>`).join("");
+  // 分區彙總
+  let h = `<table><thead><tr><th>分區</th><th>筆數</th><th>件數</th><th>占比(件)</th><th style="text-align:left">到著站（筆數）</th></tr></thead><tbody>`;
+  for(const r of REGION_ORDER){ const b=by[r]; if(!b.n) continue;
+    const st = Object.entries(b.st).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join("、");
+    h += `<tr style="background:#${REGION_COLOR[r]}"><td><b>${r}</b></td><td class="mono">${b.n}</td><td class="mono">${b.pcs}</td><td class="mono">${pcs?Math.round(b.pcs/pcs*100):0}%</td><td class="l" style="white-space:normal">${st}</td></tr>`; }
+  h += `<tr class="total"><td>合計</td><td class="mono">${tot}</td><td class="mono">${pcs}</td><td>100%</td><td></td></tr></tbody></table>`;
+  $("regTbl").innerHTML = tot ? h : `<div class="hint">此範圍無資料</div>`;
+  // 逐日
+  if(MODE==="month"){
+    const bd = {}; for(const r of ROWS){ const d=bd[r.ship_date] ??= {n:0,pcs:0,reg:{}}; d.n++; d.pcs+=r.pcs||0; d.reg[r.region]=(d.reg[r.region]||0)+1; }
+    const regs = REGION_ORDER.filter(r=>by[r].n);
+    let t = `<table><thead><tr><th>日期</th><th>星期</th>${regs.map(r=>`<th style="background:#${REGION_COLOR[r]};color:#17212e">${r}</th>`).join("")}<th>筆數</th><th>件數</th></tr></thead><tbody>`;
+    for(const d of Object.keys(bd).sort()){ const x=bd[d]; t+=`<tr><td>${md(d)}</td><td>週${WD[new Date(d).getDay()]}</td>${regs.map(r=>`<td class="mono">${x.reg[r]||""}</td>`).join("")}<td class="mono">${x.n}</td><td class="mono">${x.pcs}</td></tr>`; }
+    t += `<tr class="total"><td>合計</td><td></td>${regs.map(r=>`<td class="mono">${by[r].n}</td>`).join("")}<td class="mono">${tot}</td><td class="mono">${pcs}</td></tr></tbody></table>`;
+    $("dayTbl").innerHTML = t; $("dayCard").style.display = "";
+  } else $("dayCard").style.display = "none";
+  // 明細
+  const dc = MODE==="month";
+  let d = `<table><thead><tr>${dc?"<th>日期</th>":""}<th>分區</th><th>貨號</th><th>到著簡碼</th><th>到著站</th><th>收貨人</th><th>收貨地址</th><th>件數</th><th>卸集時間</th></tr></thead><tbody>`;
+  for(const r of vis) d += `<tr style="background:#${REGION_COLOR[r.region]}">${dc?`<td>${md(r.ship_date)}</td>`:""}<td><b>${r.region}</b></td><td class="mono">${r.invoice_no}</td><td class="mono">${r.code}</td><td>${r.station}</td><td class="l">${r.receiver||""}</td><td class="l">${r.address||""}</td><td class="mono">${r.pcs}</td><td class="mono">${(r.unload_time||"").slice(5)}</td></tr>`;
+  d += "</tbody></table>";
+  $("detTbl").innerHTML = vis.length ? d : `<div class="hint">無資料</div>`;
+  $("cnt").textContent = `（顯示 ${vis.length} / ${tot} 筆）`;
+}
+
+/* ── 控制 ── */
+$("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  MODE=b.dataset.m; $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  $("daySel").style.display = MODE==="day"?"":"none"; $("monSel").style.display = MODE==="month"?"":"none"; load();
+});
+$("daySel").onchange = load; $("monSel").onchange = load;
+
+async function boot(){
+  try{
+    const res = await api({action:"dates"});
+    DATES = res.dates;
+    if(!DATES.length){ $("msg").textContent="尚無資料，請先對 Claude 說「更新朝和」。"; return; }
+    $("daySel").innerHTML = DATES.slice().reverse().map(d=>`<option value="${d.date}">${d.date.replace(/-/g,"/")}（週${WD[new Date(d.date).getDay()]}）${d.n} 筆 ${d.pcs} 件</option>`).join("");
+    const mons = [...new Set(DATES.map(d=>d.date.slice(0,7)))].sort().reverse();
+    $("monSel").innerHTML = mons.map(m=>`<option value="${m}">${m.replace("-","年")}月</option>`).join("");
+    $("upd").textContent = "最新資料 "+DATES[DATES.length-1].date.replace(/-/g,"/");
+    load();
+  }catch(e){ $("msg").textContent="讀取失敗："+e.message; }
+}
+boot();
+
+/* ── Excel 匯出（ExcelJS：分區在第一欄、依區排序、整列分區底色、篩選、凍結、列印設定） ── */
+function ensureExcelJS(){
+  if(window.ExcelJS) return Promise.resolve();
+  return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"; s.onload=res; s.onerror=()=>rej(new Error("Excel 元件載入失敗")); document.head.appendChild(s); });
+}
+const FONT = {name:"微軟正黑體", size:14};
+const thin = {style:"thin", color:{argb:"FF808080"}};
+const BORDER = {top:thin,bottom:thin,left:thin,right:thin};
+function widthOf(rows){ // 依 14pt 微軟正黑體：全形 3.0、半形 1.7、留 4
+  const w=[]; for(const row of rows) row.forEach((c,i)=>{ let n=0; for(const ch of String(c??"")) n+= ch.codePointAt(0)>255?3:1.7; w[i]=Math.max(w[i]||0,n); }); return w.map(n=>Math.min(Math.round((n+4)*10)/10, 70));
+}
+function addSheet(wb, name, head, rows, opt={}){
+  const ws = wb.addWorksheet(name, {views:[{state:"frozen", ySplit:1}], pageSetup:{orientation:"landscape", paperSize:9, fitToPage:true, fitToWidth:1, fitToHeight:0, printTitlesRow:"1:1", margins:{left:0.4,right:0.4,top:0.5,bottom:0.5,header:0.3,footer:0.3}}});
+  ws.headerFooter = {oddFooter:"&C第 &P 頁 / 共 &N 頁"};
+  ws.addRow(head); ws.addRows(rows);
+  const widths = widthOf([head, ...rows]);
+  ws.columns.forEach((c,i)=>{ c.width = widths[i]; });
+  ws.eachRow((row, rn)=>{
+    row.height = rn===1 ? 26 : undefined;
+    const fill = rn===1 ? null : (opt.fill ? opt.fill(rows[rn-2], rn-2) : null);
+    row.eachCell({includeEmpty:true}, (cell, cn)=>{
+      cell.font = rn===1 ? {...FONT, bold:true} : FONT;
+      cell.border = BORDER;
+      cell.alignment = {vertical:"middle", horizontal:(rn>1 && (opt.left||[]).includes(cn-1)) ? "left" : "center"};
+      if(rn===1) cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FFD9D9D9"}};
+      else if(fill) cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF"+fill}};
+      if(opt.bold && rn>1 && opt.bold(rows[rn-2])) cell.font = {...FONT, bold:true};
+    });
+  });
+  ws.autoFilter = {from:{row:1,column:1}, to:{row:1+rows.length, column:head.length}};
+  return ws;
+}
+$("xlsBtn").onclick = async ()=>{
+  if(!ROWS.length){ alert("此範圍無資料"); return; }
+  try{ await ensureExcelJS(); }catch(e){ alert(e.message); return; }
+  const wb = new ExcelJS.Workbook();
+  const dc = MODE==="month";
+  const by = summarize(ROWS), tot = ROWS.length, pcs = ROWS.reduce((s,r)=>s+(r.pcs||0),0);
+  // 出貨明細
+  const head = [...(dc?["日期"]:[]), "分區","貨號","到著簡碼","到著站","收貨人","收貨地址","件數","卸集時間"];
+  const rows = ROWS.map(r=>[...(dc?[md(r.ship_date)]:[]), r.region, r.invoice_no, r.code, r.station, r.receiver||"", r.address||"", r.pcs, (r.unload_time||"").slice(5)]);
+  const ri = dc?1:0;
+  addSheet(wb, "出貨明細", head, rows, {fill:r=>REGION_COLOR[r[ri]], left:[ri+4, ri+5]});
+  // 分區彙總
+  const sum = REGION_ORDER.filter(r=>by[r].n).map(r=>[r, by[r].n, by[r].pcs, (pcs?Math.round(by[r].pcs/pcs*100):0)+"%", Object.entries(by[r].st).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join("、")]);
+  sum.push(["合計", tot, pcs, "100%", ""]);
+  addSheet(wb, "分區彙總", ["分區","筆數","件數","占比(件)","到著站（筆數）"], sum, {fill:r=>REGION_COLOR[r[0]]||"EFEFEF", left:[4], bold:r=>r[0]==="合計"});
+  // 逐日（整月）
+  if(dc){
+    const bd = {}; for(const r of ROWS){ const d=bd[r.ship_date] ??= {n:0,pcs:0,reg:{}}; d.n++; d.pcs+=r.pcs||0; d.reg[r.region]=(d.reg[r.region]||0)+1; }
+    const regs = REGION_ORDER.filter(r=>by[r].n);
+    const drows = Object.keys(bd).sort().map(d=>[md(d), "週"+WD[new Date(d).getDay()], ...regs.map(r=>bd[d].reg[r]||0), bd[d].n, bd[d].pcs]);
+    drows.push(["合計","", ...regs.map(r=>by[r].n), tot, pcs]);
+    addSheet(wb, "逐日彙總", ["日期","星期",...regs,"筆數","件數"], drows, {fill:r=>r[0]==="合計"?"EFEFEF":null, bold:r=>r[0]==="合計"});
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+  a.download = dc ? `朝和餅舖 ${label().replace("-","")}_分區.xlsx` : `朝和餅舖 ${label().replace(/-/g,"")}_分區.xlsx`;
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+};
+</script>
+</body>
+</html>
