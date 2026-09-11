@@ -22,13 +22,16 @@ button{font-family:inherit;font-size:14px;padding:7px 14px;border-radius:7px;bor
 button:hover{border-color:var(--accent2);color:var(--accent2)}
 button.pri{background:var(--accent2);border-color:var(--accent2);color:#fff}
 button.pri:hover{filter:brightness(1.1);color:#fff}
-button:disabled{opacity:.5;cursor:default}
-select,input[type=text]{font-family:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff}
+button:disabled{opacity:.4;cursor:default}
+input[type=date],input[type=month]{font-family:inherit;font-size:16px;font-weight:700;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{border:none;border-radius:0;padding:6px 14px}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--accent2);color:#fff}
-.right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.bar .nav{font-size:18px;padding:4px 12px;line-height:1.3}
+.bar .info{font-size:15px;font-weight:700;color:var(--accent)}
+.bar .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .kpi{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--soft)}
 .kpi .l{font-size:12px;color:var(--sub)}
@@ -39,34 +42,16 @@ th,td{border:1px solid var(--line);padding:6px 10px;text-align:center;white-spac
 th{background:var(--accent2);color:#fff;font-weight:700;position:sticky;top:0}
 td.l{text-align:left}
 tr.total td{background:var(--soft);font-weight:700}
+tr.clk{cursor:pointer}
+tr.clk:hover td{filter:brightness(.95)}
 .tblwrap{overflow:auto;max-height:70vh}
 .hint{font-size:13px;color:var(--sub);line-height:1.7}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
 .chip{padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;border:1px solid rgba(0,0,0,.08);cursor:pointer}
 .chip.off{opacity:.35}
-#msg{color:var(--red);font-size:13px;min-height:18px}
+#msg{color:var(--red);font-size:13px;min-height:18px;margin-top:6px}
+#msg button{margin-left:6px;padding:2px 10px;font-size:13px}
 .mono{font-variant-numeric:tabular-nums}
-/* 日曆 */
-.range{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
-.cal{width:330px;flex:none;border:1px solid var(--line);border-radius:10px;padding:10px 12px 8px;background:#fff;user-select:none}
-.cal .nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-.cal .nav b{font-size:16px}
-.cal .nav button{padding:2px 10px;font-size:16px;line-height:1.4}
-.cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
-.cal .wd{font-size:12px;color:var(--sub);padding:4px 0}
-.cal .d{border-radius:8px;padding:5px 0 3px;font-size:14px;cursor:default;color:#b6c0cd;position:relative;line-height:1.2}
-.cal .d.has{color:var(--ink);font-weight:700;cursor:pointer}
-.cal .d.has:hover{background:var(--soft)}
-.cal .d.sel{background:var(--accent2);color:#fff}
-.cal .d.today{outline:2px solid var(--accent2);outline-offset:-2px}
-.cal .d i{display:block;width:7px;height:7px;border-radius:50%;margin:3px auto 0;background:transparent}
-.cal .d.sel i{box-shadow:0 0 0 1.5px #fff}
-.cal .foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--sub);margin-top:6px;border-top:1px solid var(--line);padding-top:6px;flex-wrap:wrap;gap:6px}
-.cal .foot i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px 0 6px;vertical-align:0}
-.cal .foot button{padding:2px 8px;font-size:12px}
-.rpanel{flex:1;min-width:260px}
-.rpanel .sel{font-size:15px;font-weight:700;margin-bottom:8px}
-@media(max-width:700px){ .cal{width:100%} }
 @media(max-width:640px){ header h1{font-size:16px} .kpi .v{font-size:20px} }
 </style>
 </head>
@@ -80,25 +65,21 @@ tr.total td{background:var(--soft);font-weight:700}
 
 <main>
   <div class="card">
-    <h2>檢視範圍
+    <div class="bar">
       <span class="seg" id="modeSeg"><button data-m="day" class="on">單日</button><button data-m="month">整月</button></span>
+      <button class="nav" id="prevBtn" title="前一天">◀</button>
+      <input type="date" id="dayIn">
+      <input type="month" id="monIn" style="display:none">
+      <button class="nav" id="nextBtn" title="後一天">▶</button>
+      <span class="info" id="info"></span>
       <span class="right">
+        <button id="latestBtn">最新</button>
         <button class="pri" id="xlsBtn">⬇ 匯出 Excel</button>
       </span>
-    </h2>
-    <div class="range">
-      <div class="cal" id="cal">
-        <div class="nav"><button id="calPrev">‹</button><b id="calTitle"></b><button id="calNext">›</button></div>
-        <div class="grid" id="calGrid"></div>
-        <div class="foot"><span id="calLegend"></span><span id="calSum"></span><button id="calLatest">最新</button></div>
-      </div>
-      <div class="rpanel">
-        <div class="sel" id="selLabel"></div>
-        <div class="chips" id="chips"></div>
-        <div class="kpis" id="kpis"></div>
-        <div id="msg"></div>
-      </div>
     </div>
+    <div class="chips" id="chips"></div>
+    <div class="kpis" id="kpis"></div>
+    <div id="msg"></div>
   </div>
 
   <div class="card">
@@ -107,7 +88,7 @@ tr.total td{background:var(--soft);font-weight:700}
   </div>
 
   <div class="card" id="dayCard" style="display:none">
-    <h2>逐日彙總</h2>
+    <h2>逐日彙總 <span class="hint">（點日期列可切到該日）</span></h2>
     <div class="tblwrap" id="dayTbl"></div>
   </div>
 
@@ -121,211 +102,228 @@ tr.total td{background:var(--soft);font-weight:700}
     <div class="hint">
       資料來源：貨物追蹤系統「PDT員工別輸入件數查詢」→ 4106 彰化 → 74257 黃世良「卸集」明細，逐筆讀取十碼貨號託運資料，只保留客戶代號 05964550009 朝和餅舖。<br>
       分區依「新竹物流各區」對照表（<code>regions.js</code>），到著站不在表內者列為「未分區」。<br>
+      單日模式：◀ ▶ 跳到前一個／後一個有資料的日期，也可直接在日期框輸入。整月模式：◀ ▶ 切月，月報含逐日彙總。<br>
       更新方式：對 Claude 說「<b>更新朝和</b>」即可抓最新日期入庫（需先登入貨物追蹤系統）。<br>
       本頁含收件人姓名與地址，請勿外傳網址。
     </div>
   </div>
 </main>
 
-<script src="regions.js"></script>
+<script src="regions.js?v=3"></script>
 <script>
-const EDGE = "https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/chaohe";
-const $ = id => document.getElementById(id);
-const fmt = n => Number(n||0).toLocaleString();
-const WD = "日一二三四五六";
-const md = d => d.slice(5).replace("-","/");
-let DATES = [], MODE = "day", ROWS = [], HIDE = new Set();
-let SEL_DAY = "", CAL_YM = "";   // 選中的日期 / 日曆顯示的年月（YYYY-MM）
-const DMAP = {};                 // date -> {n,pcs}
-const dotColor = pcs => (DOT_LEVELS.find(l=>pcs>=l.min)||{}).color || null;
+/* 只用 ES2018 以內語法（公司電腦 Edge 版本可能較舊，避免 ??= / ?. 造成整頁不執行） */
+var EDGE = "https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/chaohe";
+var $ = function(id){ return document.getElementById(id); };
+var fmt = function(n){ return Number(n||0).toLocaleString(); };
+var WD = "日一二三四五六";
+var md = function(d){ return d.slice(5).replace("-","/"); };
+var wd = function(d){ var p=d.split("-"); return WD[new Date(+p[0],+p[1]-1,+p[2]).getDay()]; };
+var DATES = [], DMAP = {}, MODE = "day", ROWS = [], HIDE = {};
+var SEL_DAY = "", SEL_MON = "";
+window.onerror = function(m){ try{ showErr("程式錯誤 "+m); }catch(e){} };
 
-/* ── 日曆 ── */
-function renderCal(){
-  const [y,m] = CAL_YM.split("-").map(Number);
-  $("calTitle").textContent = `${y}年${m}月`;
-  const first = new Date(y, m-1, 1), days = new Date(y, m, 0).getDate();
-  const today = new Date(); const tkey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
-  let h = "日一二三四五六".split("").map(w=>`<div class="wd">${w}</div>`).join("");
-  for(let i=0;i<first.getDay();i++) h += "<div></div>";
-  let n=0, pcs=0;
-  for(let d=1; d<=days; d++){
-    const key = `${CAL_YM}-${String(d).padStart(2,"0")}`, info = DMAP[key];
-    const cls = ["d", info?"has":"", key===SEL_DAY&&MODE==="day"?"sel":"", key===tkey?"today":""].join(" ");
-    const tip = info ? `${key.replace(/-/g,"/")}：${info.n} 筆 ${info.pcs} 件` : "";
-    if(info){ n+=info.n; pcs+=info.pcs; }
-    h += `<div class="${cls}" data-d="${key}" title="${tip}">${d}<i style="background:${info?dotColor(info.pcs):"transparent"}"></i></div>`;
-  }
-  $("calGrid").innerHTML = h;
-  $("calGrid").querySelectorAll(".d.has").forEach(el=>el.onclick=()=>{ SEL_DAY = el.dataset.d; setMode("day"); });
-  $("calSum").textContent = n ? `本月 ${n} 筆 ${pcs} 件` : "本月無資料";
-  $("calLegend").innerHTML = DOT_LEVELS.map(l=>`<i style="background:${l.color}"></i>${l.label}`).join("");
-}
-$("calPrev").onclick = ()=>{ shiftMonth(-1); };
-$("calNext").onclick = ()=>{ shiftMonth(1); };
-function shiftMonth(k){
-  const [y,m] = CAL_YM.split("-").map(Number); const d = new Date(y, m-1+k, 1);
-  CAL_YM = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-  if(MODE==="month") load(); else renderCal();
-}
-$("calLatest").onclick = ()=>{ if(!DATES.length) return; SEL_DAY = DATES[DATES.length-1].date; CAL_YM = SEL_DAY.slice(0,7); setMode("day"); };
-function setMode(m){
-  MODE = m; $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.m===m));
-  load();
-}
-
-async function api(body, tries=5){
-  for(let i=1;;i++){
-    try{
-      // 用 text/plain 送 JSON：屬「簡單請求」不觸發 CORS 預檢(OPTIONS)，避開公司網路擋 OPTIONS 的問題
-      const r = await fetch(EDGE,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(body)});
-      const j = await r.json(); if(!j.ok) throw new Error(j.error||"error"); return j;
-    }catch(e){ if(i>=tries || !/fetch|network|json/i.test(e.message)) throw e; await new Promise(r=>setTimeout(r,700*i)); } // 冷啟動/網路瞬斷重試
-  }
-}
 function showErr(msg){
-  $("msg").innerHTML = `讀取失敗：${msg}　<button id="retryBtn">重新載入</button>`;
-  $("retryBtn").onclick = ()=>location.reload();
+  $("msg").innerHTML = "讀取失敗："+msg+"<button id=\"retryBtn\">重新載入</button>";
+  $("retryBtn").onclick = function(){ location.reload(); };
+}
+async function api(body, tries){
+  tries = tries||5;
+  for(var i=1;;i++){
+    try{
+      // text/plain 送 JSON：屬「簡單請求」不觸發 CORS 預檢(OPTIONS)，避開公司網路擋 OPTIONS
+      var r = await fetch(EDGE,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(body)});
+      var j = await r.json(); if(!j.ok) throw new Error(j.error||"error"); return j;
+    }catch(e){ if(i>=tries || !/fetch|network|json/i.test(e.message)) throw e; await new Promise(function(res){ setTimeout(res,700*i); }); }
+  }
 }
 function enrich(rows){
-  return rows.map(r=>({...r, station:normStation(r.dest_station), region:regionOf(r.dest_station), code:codeOf(r.dest_station)}));
+  return rows.map(function(r){ var o=Object.assign({},r); o.station=normStation(r.dest_station); o.region=regionOf(r.dest_station); o.code=codeOf(r.dest_station); return o; });
 }
 function sortRows(rows){
-  const ri = r => { const i = REGION_ORDER.indexOf(r.region); return i<0?99:i; };
-  return rows.slice().sort((a,b)=> (a.ship_date>b.ship_date)-(a.ship_date<b.ship_date) || ri(a)-ri(b) || (parseInt(a.code||"9999")-parseInt(b.code||"9999")) || a.station.localeCompare(b.station,"zh-Hant") || a.invoice_no.localeCompare(b.invoice_no));
+  var ri = function(r){ var i = REGION_ORDER.indexOf(r.region); return i<0?99:i; };
+  return rows.slice().sort(function(a,b){
+    if(a.ship_date!==b.ship_date) return a.ship_date<b.ship_date?-1:1;
+    if(ri(a)!==ri(b)) return ri(a)-ri(b);
+    var ca=parseInt(a.code||"9999",10), cb=parseInt(b.code||"9999",10); if(ca!==cb) return ca-cb;
+    if(a.station!==b.station) return a.station.localeCompare(b.station,"zh-Hant");
+    return a.invoice_no<b.invoice_no?-1:1;
+  });
 }
-function label(){ return MODE==="day" ? SEL_DAY : CAL_YM; }
+function monthRange(m){ var y=+m.slice(0,4), mm=+m.slice(5,7); var last=new Date(y,mm,0).getDate(); return [m+"-01", m+"-"+String(last).padStart(2,"0")]; }
+function label(){ return MODE==="day" ? SEL_DAY : SEL_MON; }
+
+/* ── 日期列 ── */
+function syncBar(){
+  var day = MODE==="day";
+  $("dayIn").style.display = day?"":"none"; $("monIn").style.display = day?"none":"";
+  $("prevBtn").title = day?"前一個有資料的日期":"上個月"; $("nextBtn").title = day?"後一個有資料的日期":"下個月";
+  if(day){
+    $("dayIn").value = SEL_DAY;
+    var idx = DATES.findIndex(function(d){ return d.date===SEL_DAY; });
+    var prev = idx>0 ? DATES[idx-1] : (idx<0 ? lastBefore(SEL_DAY) : null);
+    var next = idx>=0 && idx<DATES.length-1 ? DATES[idx+1] : (idx<0 ? firstAfter(SEL_DAY) : null);
+    $("prevBtn").disabled = !prev; $("nextBtn").disabled = !next;
+    var info = DMAP[SEL_DAY];
+    $("info").textContent = SEL_DAY ? (SEL_DAY.replace(/-/g,"/")+"（週"+wd(SEL_DAY)+"）"+(info?"　"+info.n+" 筆 "+info.pcs+" 件":"　該日無資料")) : "";
+  }else{
+    $("monIn").value = SEL_MON;
+    $("prevBtn").disabled = false; $("nextBtn").disabled = false;
+    var n=0,p=0,days=0; DATES.forEach(function(d){ if(d.date.slice(0,7)===SEL_MON){ n+=d.n; p+=d.pcs; days++; } });
+    $("info").textContent = SEL_MON.replace("-","年")+"月 整月　"+(days?days+" 個出貨日 "+n+" 筆 "+p+" 件":"本月無資料");
+  }
+}
+function lastBefore(d){ var r=null; DATES.forEach(function(x){ if(x.date<d) r=x; }); return r; }
+function firstAfter(d){ for(var i=0;i<DATES.length;i++) if(DATES[i].date>d) return DATES[i]; return null; }
+function setMode(m){
+  MODE = m;
+  Array.prototype.forEach.call($("modeSeg").querySelectorAll("button"), function(x){ x.classList.toggle("on", x.getAttribute("data-m")===m); });
+  if(m==="month" && SEL_DAY) SEL_MON = SEL_DAY.slice(0,7);
+  load();
+}
+Array.prototype.forEach.call($("modeSeg").querySelectorAll("button"), function(b){ b.onclick=function(){ setMode(b.getAttribute("data-m")); }; });
+$("prevBtn").onclick = function(){
+  if(MODE==="day"){ var idx=DATES.findIndex(function(d){return d.date===SEL_DAY;}); var t = idx>0?DATES[idx-1]:lastBefore(SEL_DAY); if(t){ SEL_DAY=t.date; load(); } }
+  else { var y=+SEL_MON.slice(0,4), m=+SEL_MON.slice(5,7)-1; if(m<1){m=12;y--;} SEL_MON=y+"-"+String(m).padStart(2,"0"); load(); }
+};
+$("nextBtn").onclick = function(){
+  if(MODE==="day"){ var idx=DATES.findIndex(function(d){return d.date===SEL_DAY;}); var t = idx>=0?DATES[idx+1]:firstAfter(SEL_DAY); if(t){ SEL_DAY=t.date; load(); } }
+  else { var y=+SEL_MON.slice(0,4), m=+SEL_MON.slice(5,7)+1; if(m>12){m=1;y++;} SEL_MON=y+"-"+String(m).padStart(2,"0"); load(); }
+};
+$("dayIn").onchange = function(){ if(this.value){ SEL_DAY=this.value; load(); } };
+$("monIn").onchange = function(){ if(this.value){ SEL_MON=this.value; load(); } };
+$("latestBtn").onclick = function(){ if(!DATES.length) return; SEL_DAY = DATES[DATES.length-1].date; SEL_MON = SEL_DAY.slice(0,7); setMode("day"); };
+
 async function load(){
   $("msg").textContent = "";
-  renderCal();
+  syncBar();
   try{
-    let from,to;
-    if(MODE==="day"){ from=to=SEL_DAY; $("selLabel").textContent = SEL_DAY ? `${SEL_DAY.replace(/-/g,"/")}（週${WD[new Date(SEL_DAY).getDay()]}）` : "請在日曆點選有資料的日期"; }
-    else { const m=CAL_YM; from=m+"-01"; const d=new Date(+m.slice(0,4), +m.slice(5,7), 0); to=m+"-"+String(d.getDate()).padStart(2,"0"); $("selLabel").textContent = `${m.replace("-","年")}月 整月`; }
+    var from,to;
+    if(MODE==="day"){ from=to=SEL_DAY; } else { var rg=monthRange(SEL_MON); from=rg[0]; to=rg[1]; }
     if(!from){ ROWS=[]; render(); return; }
-    const res = await api({action:"range", from, to});
+    var res = await api({action:"range", from:from, to:to});
     ROWS = sortRows(enrich(res.rows));
     render();
   }catch(e){ showErr(e.message); }
 }
 function summarize(rows){
-  const by = {}; REGION_ORDER.forEach(r=>by[r]={n:0,pcs:0,st:{}});
-  for(const r of rows){ const b=by[r.region]; b.n++; b.pcs+=r.pcs||0; b.st[r.station]=(b.st[r.station]||0)+1; }
+  var by = {}; REGION_ORDER.forEach(function(r){ by[r]={n:0,pcs:0,st:{}}; });
+  rows.forEach(function(r){ var b=by[r.region]; b.n++; b.pcs+=r.pcs||0; b.st[r.station]=(b.st[r.station]||0)+1; });
   return by;
 }
+function byDay(rows){
+  var bd = {}; rows.forEach(function(r){ if(!bd[r.ship_date]) bd[r.ship_date]={n:0,pcs:0,reg:{}}; var d=bd[r.ship_date]; d.n++; d.pcs+=r.pcs||0; d.reg[r.region]=(d.reg[r.region]||0)+1; });
+  return bd;
+}
+function stList(st){ return Object.keys(st).sort(function(a,b){ return st[b]-st[a]; }).map(function(k){ return k+" "+st[k]; }).join("、"); }
 function render(){
-  const vis = ROWS.filter(r=>!HIDE.has(r.region));
-  const by = summarize(ROWS);
-  const tot = ROWS.length, pcs = ROWS.reduce((s,r)=>s+(r.pcs||0),0);
-  const days = new Set(ROWS.map(r=>r.ship_date)).size;
-  $("chips").innerHTML = REGION_ORDER.filter(r=>by[r].n).map(r=>`<span class="chip ${HIDE.has(r)?"off":""}" data-r="${r}" style="background:#${REGION_COLOR[r]}">${r} ${by[r].n}</span>`).join("");
-  $("chips").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ const r=c.dataset.r; HIDE.has(r)?HIDE.delete(r):HIDE.add(r); render(); });
-  $("kpis").innerHTML = [
-    ["總筆數", fmt(tot), MODE==="month"?`${days} 個出貨日`:""],
-    ["總件數", fmt(pcs), MODE==="month"&&days?`日均 ${fmt(Math.round(pcs/days))} 件`:""],
-    ["到著站數", new Set(ROWS.map(r=>r.station)).size, ""],
+  var vis = ROWS.filter(function(r){ return !HIDE[r.region]; });
+  var by = summarize(ROWS);
+  var tot = ROWS.length, pcs = ROWS.reduce(function(s,r){ return s+(r.pcs||0); },0);
+  var dayset = {}; ROWS.forEach(function(r){ dayset[r.ship_date]=1; }); var days = Object.keys(dayset).length;
+  $("chips").innerHTML = REGION_ORDER.filter(function(r){ return by[r].n; }).map(function(r){ return '<span class="chip '+(HIDE[r]?"off":"")+'" data-r="'+r+'" style="background:#'+REGION_COLOR[r]+'">'+r+" "+by[r].n+"</span>"; }).join("");
+  Array.prototype.forEach.call($("chips").querySelectorAll(".chip"), function(c){ c.onclick=function(){ var r=c.getAttribute("data-r"); HIDE[r]=!HIDE[r]; render(); }; });
+  var stset = {}; ROWS.forEach(function(r){ stset[r.station]=1; });
+  var kp = [
+    ["總筆數", fmt(tot), MODE==="month"?days+" 個出貨日":""],
+    ["總件數", fmt(pcs), (MODE==="month"&&days)?"日均 "+fmt(Math.round(pcs/days))+" 件":""],
+    ["到著站數", Object.keys(stset).length, ""],
     ["未分區", by["未分區"].n, by["未分區"].n?Object.keys(by["未分區"].st).join("、"):"—"],
-  ].map(([l,v,s])=>`<div class="kpi"><div class="l">${l}</div><div class="v mono">${v}</div><div class="s">${s}</div></div>`).join("");
+  ];
+  $("kpis").innerHTML = kp.map(function(k){ return '<div class="kpi"><div class="l">'+k[0]+'</div><div class="v mono">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>'; }).join("");
   // 分區彙總
-  let h = `<table><thead><tr><th>分區</th><th>筆數</th><th>件數</th><th>占比(件)</th><th style="text-align:left">到著站（筆數）</th></tr></thead><tbody>`;
-  for(const r of REGION_ORDER){ const b=by[r]; if(!b.n) continue;
-    const st = Object.entries(b.st).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join("、");
-    h += `<tr style="background:#${REGION_COLOR[r]}"><td><b>${r}</b></td><td class="mono">${b.n}</td><td class="mono">${b.pcs}</td><td class="mono">${pcs?Math.round(b.pcs/pcs*100):0}%</td><td class="l" style="white-space:normal">${st}</td></tr>`; }
-  h += `<tr class="total"><td>合計</td><td class="mono">${tot}</td><td class="mono">${pcs}</td><td>100%</td><td></td></tr></tbody></table>`;
-  $("regTbl").innerHTML = tot ? h : `<div class="hint">此範圍無資料</div>`;
+  var h = '<table><thead><tr><th>分區</th><th>筆數</th><th>件數</th><th>占比(件)</th><th style="text-align:left">到著站（筆數）</th></tr></thead><tbody>';
+  REGION_ORDER.forEach(function(r){ var b=by[r]; if(!b.n) return;
+    h += '<tr style="background:#'+REGION_COLOR[r]+'"><td><b>'+r+'</b></td><td class="mono">'+b.n+'</td><td class="mono">'+b.pcs+'</td><td class="mono">'+(pcs?Math.round(b.pcs/pcs*100):0)+'%</td><td class="l" style="white-space:normal">'+stList(b.st)+'</td></tr>'; });
+  h += '<tr class="total"><td>合計</td><td class="mono">'+tot+'</td><td class="mono">'+pcs+'</td><td>100%</td><td></td></tr></tbody></table>';
+  $("regTbl").innerHTML = tot ? h : '<div class="hint">此範圍無資料</div>';
   // 逐日
   if(MODE==="month"){
-    const bd = {}; for(const r of ROWS){ const d=bd[r.ship_date] ??= {n:0,pcs:0,reg:{}}; d.n++; d.pcs+=r.pcs||0; d.reg[r.region]=(d.reg[r.region]||0)+1; }
-    const regs = REGION_ORDER.filter(r=>by[r].n);
-    let t = `<table><thead><tr><th>日期</th><th>星期</th>${regs.map(r=>`<th style="background:#${REGION_COLOR[r]};color:#17212e">${r}</th>`).join("")}<th>筆數</th><th>件數</th></tr></thead><tbody>`;
-    for(const d of Object.keys(bd).sort()){ const x=bd[d]; t+=`<tr><td>${md(d)}</td><td>週${WD[new Date(d).getDay()]}</td>${regs.map(r=>`<td class="mono">${x.reg[r]||""}</td>`).join("")}<td class="mono">${x.n}</td><td class="mono">${x.pcs}</td></tr>`; }
-    t += `<tr class="total"><td>合計</td><td></td>${regs.map(r=>`<td class="mono">${by[r].n}</td>`).join("")}<td class="mono">${tot}</td><td class="mono">${pcs}</td></tr></tbody></table>`;
+    var bd = byDay(ROWS), regs = REGION_ORDER.filter(function(r){ return by[r].n; });
+    var t = '<table><thead><tr><th>日期</th><th>星期</th>'+regs.map(function(r){ return '<th style="background:#'+REGION_COLOR[r]+';color:#17212e">'+r+'</th>'; }).join("")+'<th>筆數</th><th>件數</th></tr></thead><tbody>';
+    Object.keys(bd).sort().forEach(function(d){ var x=bd[d]; t+='<tr class="clk" data-d="'+d+'"><td>'+md(d)+'</td><td>週'+wd(d)+'</td>'+regs.map(function(r){ return '<td class="mono">'+(x.reg[r]||"")+'</td>'; }).join("")+'<td class="mono">'+x.n+'</td><td class="mono">'+x.pcs+'</td></tr>'; });
+    t += '<tr class="total"><td>合計</td><td></td>'+regs.map(function(r){ return '<td class="mono">'+by[r].n+'</td>'; }).join("")+'<td class="mono">'+tot+'</td><td class="mono">'+pcs+'</td></tr></tbody></table>';
     $("dayTbl").innerHTML = t; $("dayCard").style.display = "";
+    Array.prototype.forEach.call($("dayTbl").querySelectorAll("tr.clk"), function(tr){ tr.onclick=function(){ SEL_DAY=tr.getAttribute("data-d"); setMode("day"); window.scrollTo(0,0); }; });
   } else $("dayCard").style.display = "none";
   // 明細
-  const dc = MODE==="month";
-  let d = `<table><thead><tr>${dc?"<th>日期</th>":""}<th>分區</th><th>貨號</th><th>到著簡碼</th><th>到著站</th><th>收貨人</th><th>收貨地址</th><th>件數</th><th>卸集時間</th></tr></thead><tbody>`;
-  for(const r of vis) d += `<tr style="background:#${REGION_COLOR[r.region]}">${dc?`<td>${md(r.ship_date)}</td>`:""}<td><b>${r.region}</b></td><td class="mono">${r.invoice_no}</td><td class="mono">${r.code}</td><td>${r.station}</td><td class="l">${r.receiver||""}</td><td class="l">${r.address||""}</td><td class="mono">${r.pcs}</td><td class="mono">${(r.unload_time||"").slice(5)}</td></tr>`;
+  var dc = MODE==="month";
+  var d = '<table><thead><tr>'+(dc?"<th>日期</th>":"")+'<th>分區</th><th>貨號</th><th>到著簡碼</th><th>到著站</th><th>收貨人</th><th>收貨地址</th><th>件數</th><th>卸集時間</th></tr></thead><tbody>';
+  vis.forEach(function(r){ d += '<tr style="background:#'+REGION_COLOR[r.region]+'">'+(dc?'<td>'+md(r.ship_date)+'</td>':"")+'<td><b>'+r.region+'</b></td><td class="mono">'+r.invoice_no+'</td><td class="mono">'+r.code+'</td><td>'+r.station+'</td><td class="l">'+(r.receiver||"")+'</td><td class="l">'+(r.address||"")+'</td><td class="mono">'+r.pcs+'</td><td class="mono">'+(r.unload_time||"").slice(5)+'</td></tr>'; });
   d += "</tbody></table>";
-  $("detTbl").innerHTML = vis.length ? d : `<div class="hint">無資料</div>`;
-  $("cnt").textContent = `（顯示 ${vis.length} / ${tot} 筆）`;
+  $("detTbl").innerHTML = vis.length ? d : '<div class="hint">無資料</div>';
+  $("cnt").textContent = "（顯示 "+vis.length+" / "+tot+" 筆）";
 }
 
-/* ── 控制 ── */
-$("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>setMode(b.dataset.m));
-
 async function boot(){
-  const t = new Date(); CAL_YM = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}`;
   try{
-    const res = await api({action:"dates"});
-    DATES = res.dates;
-    for(const d of DATES) DMAP[d.date] = {n:d.n, pcs:d.pcs};
-    if(!DATES.length){ renderCal(); $("msg").textContent="尚無資料，請先對 Claude 說「更新朝和」。"; return; }
-    SEL_DAY = DATES[DATES.length-1].date; CAL_YM = SEL_DAY.slice(0,7);
+    var res = await api({action:"dates"});
+    DATES = res.dates.slice().sort(function(a,b){ return a.date<b.date?-1:1; });
+    DATES.forEach(function(d){ DMAP[d.date] = {n:d.n, pcs:d.pcs}; });
+    if(!DATES.length){ $("msg").textContent="尚無資料，請先對 Claude 說「更新朝和」。"; return; }
+    SEL_DAY = DATES[DATES.length-1].date; SEL_MON = SEL_DAY.slice(0,7);
     $("upd").textContent = "最新資料 "+SEL_DAY.replace(/-/g,"/");
     load();
-  }catch(e){ renderCal(); showErr(e.message); }
+  }catch(e){ showErr(e.message); }
 }
 boot();
 
 /* ── Excel 匯出（ExcelJS：分區在第一欄、依區排序、整列分區底色、篩選、凍結、列印設定） ── */
 function ensureExcelJS(){
   if(window.ExcelJS) return Promise.resolve();
-  return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"; s.onload=res; s.onerror=()=>rej(new Error("Excel 元件載入失敗")); document.head.appendChild(s); });
+  return new Promise(function(res,rej){ var s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"; s.onload=res; s.onerror=function(){ rej(new Error("Excel 元件載入失敗")); }; document.head.appendChild(s); });
 }
-const FONT = {name:"微軟正黑體", size:14};
-const thin = {style:"thin", color:{argb:"FF808080"}};
-const BORDER = {top:thin,bottom:thin,left:thin,right:thin};
+var FONT = {name:"微軟正黑體", size:14};
+var thin = {style:"thin", color:{argb:"FF808080"}};
+var BORDER = {top:thin,bottom:thin,left:thin,right:thin};
 function widthOf(rows){ // 依 14pt 微軟正黑體：全形 3.0、半形 1.7、留 4
-  const w=[]; for(const row of rows) row.forEach((c,i)=>{ let n=0; for(const ch of String(c??"")) n+= ch.codePointAt(0)>255?3:1.7; w[i]=Math.max(w[i]||0,n); }); return w.map(n=>Math.min(Math.round((n+4)*10)/10, 70));
+  var w=[]; rows.forEach(function(row){ row.forEach(function(c,i){ var n=0; String(c==null?"":c).split("").forEach(function(ch){ n+= ch.charCodeAt(0)>255?3:1.7; }); w[i]=Math.max(w[i]||0,n); }); });
+  return w.map(function(n){ return Math.min(Math.round((n+4)*10)/10, 70); });
 }
-function addSheet(wb, name, head, rows, opt={}){
-  const ws = wb.addWorksheet(name, {views:[{state:"frozen", ySplit:1}], pageSetup:{orientation:"landscape", paperSize:9, fitToPage:true, fitToWidth:1, fitToHeight:0, printTitlesRow:"1:1", margins:{left:0.4,right:0.4,top:0.5,bottom:0.5,header:0.3,footer:0.3}}});
+function addSheet(wb, name, head, rows, opt){
+  opt = opt||{};
+  var ws = wb.addWorksheet(name, {views:[{state:"frozen", ySplit:1}], pageSetup:{orientation:"landscape", paperSize:9, fitToPage:true, fitToWidth:1, fitToHeight:0, printTitlesRow:"1:1", margins:{left:0.4,right:0.4,top:0.5,bottom:0.5,header:0.3,footer:0.3}}});
   ws.headerFooter = {oddFooter:"&C第 &P 頁 / 共 &N 頁"};
   ws.addRow(head); ws.addRows(rows);
-  const widths = widthOf([head, ...rows]);
-  ws.columns.forEach((c,i)=>{ c.width = widths[i]; });
-  ws.eachRow((row, rn)=>{
-    row.height = rn===1 ? 26 : undefined;
-    const fill = rn===1 ? null : (opt.fill ? opt.fill(rows[rn-2], rn-2) : null);
-    row.eachCell({includeEmpty:true}, (cell, cn)=>{
-      cell.font = rn===1 ? {...FONT, bold:true} : FONT;
+  var widths = widthOf([head].concat(rows));
+  ws.columns.forEach(function(c,i){ c.width = widths[i]; });
+  ws.eachRow(function(row, rn){
+    if(rn===1) row.height = 26;
+    var fill = rn===1 ? null : (opt.fill ? opt.fill(rows[rn-2], rn-2) : null);
+    row.eachCell({includeEmpty:true}, function(cell, cn){
+      cell.font = rn===1 ? Object.assign({},FONT,{bold:true}) : FONT;
       cell.border = BORDER;
-      cell.alignment = {vertical:"middle", horizontal:(rn>1 && (opt.left||[]).includes(cn-1)) ? "left" : "center"};
+      cell.alignment = {vertical:"middle", horizontal:(rn>1 && (opt.left||[]).indexOf(cn-1)>=0) ? "left" : "center"};
       if(rn===1) cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FFD9D9D9"}};
       else if(fill) cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF"+fill}};
-      if(opt.bold && rn>1 && opt.bold(rows[rn-2])) cell.font = {...FONT, bold:true};
+      if(opt.bold && rn>1 && opt.bold(rows[rn-2])) cell.font = Object.assign({},FONT,{bold:true});
     });
   });
   ws.autoFilter = {from:{row:1,column:1}, to:{row:1+rows.length, column:head.length}};
   return ws;
 }
-$("xlsBtn").onclick = async ()=>{
+$("xlsBtn").onclick = async function(){
   if(!ROWS.length){ alert("此範圍無資料"); return; }
   try{ await ensureExcelJS(); }catch(e){ alert(e.message); return; }
-  const wb = new ExcelJS.Workbook();
-  const dc = MODE==="month";
-  const by = summarize(ROWS), tot = ROWS.length, pcs = ROWS.reduce((s,r)=>s+(r.pcs||0),0);
-  // 出貨明細
-  const head = [...(dc?["日期"]:[]), "分區","貨號","到著簡碼","到著站","收貨人","收貨地址","件數","卸集時間"];
-  const rows = ROWS.map(r=>[...(dc?[md(r.ship_date)]:[]), r.region, r.invoice_no, r.code, r.station, r.receiver||"", r.address||"", r.pcs, (r.unload_time||"").slice(5)]);
-  const ri = dc?1:0;
-  addSheet(wb, "出貨明細", head, rows, {fill:r=>REGION_COLOR[r[ri]], left:[ri+4, ri+5]});
-  // 分區彙總
-  const sum = REGION_ORDER.filter(r=>by[r].n).map(r=>[r, by[r].n, by[r].pcs, (pcs?Math.round(by[r].pcs/pcs*100):0)+"%", Object.entries(by[r].st).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join("、")]);
+  var wb = new ExcelJS.Workbook();
+  var dc = MODE==="month";
+  var by = summarize(ROWS), tot = ROWS.length, pcs = ROWS.reduce(function(s,r){ return s+(r.pcs||0); },0);
+  var head = (dc?["日期"]:[]).concat(["分區","貨號","到著簡碼","到著站","收貨人","收貨地址","件數","卸集時間"]);
+  var rows = ROWS.map(function(r){ return (dc?[md(r.ship_date)]:[]).concat([r.region, r.invoice_no, r.code, r.station, r.receiver||"", r.address||"", r.pcs, (r.unload_time||"").slice(5)]); });
+  var ri = dc?1:0;
+  addSheet(wb, "出貨明細", head, rows, {fill:function(r){ return REGION_COLOR[r[ri]]; }, left:[ri+4, ri+5]});
+  var sum = REGION_ORDER.filter(function(r){ return by[r].n; }).map(function(r){ return [r, by[r].n, by[r].pcs, (pcs?Math.round(by[r].pcs/pcs*100):0)+"%", stList(by[r].st)]; });
   sum.push(["合計", tot, pcs, "100%", ""]);
-  addSheet(wb, "分區彙總", ["分區","筆數","件數","占比(件)","到著站（筆數）"], sum, {fill:r=>REGION_COLOR[r[0]]||"EFEFEF", left:[4], bold:r=>r[0]==="合計"});
-  // 逐日（整月）
+  addSheet(wb, "分區彙總", ["分區","筆數","件數","占比(件)","到著站（筆數）"], sum, {fill:function(r){ return REGION_COLOR[r[0]]||"EFEFEF"; }, left:[4], bold:function(r){ return r[0]==="合計"; }});
   if(dc){
-    const bd = {}; for(const r of ROWS){ const d=bd[r.ship_date] ??= {n:0,pcs:0,reg:{}}; d.n++; d.pcs+=r.pcs||0; d.reg[r.region]=(d.reg[r.region]||0)+1; }
-    const regs = REGION_ORDER.filter(r=>by[r].n);
-    const drows = Object.keys(bd).sort().map(d=>[md(d), "週"+WD[new Date(d).getDay()], ...regs.map(r=>bd[d].reg[r]||0), bd[d].n, bd[d].pcs]);
-    drows.push(["合計","", ...regs.map(r=>by[r].n), tot, pcs]);
-    addSheet(wb, "逐日彙總", ["日期","星期",...regs,"筆數","件數"], drows, {fill:r=>r[0]==="合計"?"EFEFEF":null, bold:r=>r[0]==="合計"});
+    var bd = byDay(ROWS), regs = REGION_ORDER.filter(function(r){ return by[r].n; });
+    var drows = Object.keys(bd).sort().map(function(d){ return [md(d), "週"+wd(d)].concat(regs.map(function(r){ return bd[d].reg[r]||0; }), [bd[d].n, bd[d].pcs]); });
+    drows.push(["合計",""].concat(regs.map(function(r){ return by[r].n; }), [tot, pcs]));
+    addSheet(wb, "逐日彙總", ["日期","星期"].concat(regs, ["筆數","件數"]), drows, {fill:function(r){ return r[0]==="合計"?"EFEFEF":null; }, bold:function(r){ return r[0]==="合計"; }});
   }
-  const buf = await wb.xlsx.writeBuffer();
-  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
-  a.download = dc ? `朝和餅舖 ${label().replace("-","")}_分區.xlsx` : `朝和餅舖 ${label().replace(/-/g,"")}_分區.xlsx`;
-  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+  var buf = await wb.xlsx.writeBuffer();
+  var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+  a.download = "朝和餅舖 "+label().replace(/-/g,"")+"_分區.xlsx";
+  a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
 };
 </script>
 </body>
