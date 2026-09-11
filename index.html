@@ -173,13 +173,18 @@ function setMode(m){
   load();
 }
 
-async function api(body, tries=3){
+async function api(body, tries=5){
   for(let i=1;;i++){
     try{
-      const r = await fetch(EDGE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      // 用 text/plain 送 JSON：屬「簡單請求」不觸發 CORS 預檢(OPTIONS)，避開公司網路擋 OPTIONS 的問題
+      const r = await fetch(EDGE,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(body)});
       const j = await r.json(); if(!j.ok) throw new Error(j.error||"error"); return j;
-    }catch(e){ if(i>=tries || !/fetch/i.test(e.message)) throw e; await new Promise(r=>setTimeout(r,800*i)); } // 冷啟動/網路瞬斷重試
+    }catch(e){ if(i>=tries || !/fetch|network|json/i.test(e.message)) throw e; await new Promise(r=>setTimeout(r,700*i)); } // 冷啟動/網路瞬斷重試
   }
+}
+function showErr(msg){
+  $("msg").innerHTML = `讀取失敗：${msg}　<button id="retryBtn">重新載入</button>`;
+  $("retryBtn").onclick = ()=>location.reload();
 }
 function enrich(rows){
   return rows.map(r=>({...r, station:normStation(r.dest_station), region:regionOf(r.dest_station), code:codeOf(r.dest_station)}));
@@ -200,7 +205,7 @@ async function load(){
     const res = await api({action:"range", from, to});
     ROWS = sortRows(enrich(res.rows));
     render();
-  }catch(e){ $("msg").textContent = "讀取失敗："+e.message; }
+  }catch(e){ showErr(e.message); }
 }
 function summarize(rows){
   const by = {}; REGION_ORDER.forEach(r=>by[r]={n:0,pcs:0,st:{}});
@@ -258,7 +263,7 @@ async function boot(){
     SEL_DAY = DATES[DATES.length-1].date; CAL_YM = SEL_DAY.slice(0,7);
     $("upd").textContent = "最新資料 "+SEL_DAY.replace(/-/g,"/");
     load();
-  }catch(e){ renderCal(); $("msg").textContent="讀取失敗："+e.message; }
+  }catch(e){ renderCal(); showErr(e.message); }
 }
 boot();
 
