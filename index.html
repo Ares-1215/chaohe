@@ -218,6 +218,8 @@ function render(){
     ["到著站數", Object.keys(stset).length, ""],
     ["未分區", by["未分區"].n, by["未分區"].n?Object.keys(by["未分區"].st).join("、"):"—"],
   ];
+  var drv = {}; ROWS.forEach(function(r){ var k=r.driver||"未標示"; if(!drv[k]) drv[k]={n:0,pcs:0}; drv[k].n++; drv[k].pcs+=r.pcs||0; });
+  Object.keys(drv).sort().forEach(function(k){ kp.push(["司機 "+k, drv[k].n+" 筆", drv[k].pcs+" 件"]); });
   $("kpis").innerHTML = kp.map(function(k){ return '<div class="kpi"><div class="l">'+k[0]+'</div><div class="v mono">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>'; }).join("");
   // 分區彙總
   var h = '<table><thead><tr><th>分區</th><th>筆數</th><th>件數</th><th>占比(件)</th><th style="text-align:left">到著站（筆數）</th></tr></thead><tbody>';
@@ -236,8 +238,8 @@ function render(){
   } else $("dayCard").style.display = "none";
   // 明細
   var dc = MODE==="month";
-  var d = '<table><thead><tr>'+(dc?"<th>日期</th>":"")+'<th>分區</th><th>貨號</th><th>到著簡碼</th><th>到著站</th><th>收貨人</th><th>收貨地址</th><th>件數</th><th>卸集時間</th></tr></thead><tbody>';
-  vis.forEach(function(r){ d += '<tr style="background:#'+REGION_COLOR[r.region]+'">'+(dc?'<td>'+md(r.ship_date)+'</td>':"")+'<td><b>'+r.region+'</b></td><td class="mono">'+r.invoice_no+'</td><td class="mono">'+r.code+'</td><td>'+r.station+'</td><td class="l">'+(r.receiver||"")+'</td><td class="l">'+(r.address||"")+'</td><td class="mono">'+r.pcs+'</td><td class="mono">'+(r.unload_time||"").slice(5)+'</td></tr>'; });
+  var d = '<table><thead><tr>'+(dc?"<th>日期</th>":"")+'<th>分區</th><th>貨號</th><th>到著簡碼</th><th>到著站</th><th>收貨人</th><th>收貨地址</th><th>件數</th><th>卸集時間</th><th>司機</th></tr></thead><tbody>';
+  vis.forEach(function(r){ d += '<tr style="background:#'+REGION_COLOR[r.region]+'">'+(dc?'<td>'+md(r.ship_date)+'</td>':"")+'<td><b>'+r.region+'</b></td><td class="mono">'+r.invoice_no+'</td><td class="mono">'+r.code+'</td><td>'+r.station+'</td><td class="l">'+(r.receiver||"")+'</td><td class="l">'+(r.address||"")+'</td><td class="mono">'+r.pcs+'</td><td class="mono">'+(r.unload_time||"").slice(5)+'</td><td>'+(r.driver||"")+'</td></tr>'; });
   d += "</tbody></table>";
   $("detTbl").innerHTML = vis.length ? d : '<div class="hint">無資料</div>';
   $("cnt").textContent = "（顯示 "+vis.length+" / "+tot+" 筆）";
@@ -296,8 +298,8 @@ $("xlsBtn").onclick = async function(){
   var wb = new ExcelJS.Workbook();
   var dc = MODE==="month";
   var by = summarize(ROWS), tot = ROWS.length, pcs = ROWS.reduce(function(s,r){ return s+(r.pcs||0); },0);
-  var head = (dc?["日期"]:[]).concat(["分區","貨號","到著簡碼","到著站","收貨人","收貨地址","件數","卸集時間"]);
-  var rows = ROWS.map(function(r){ return (dc?[md(r.ship_date)]:[]).concat([r.region, r.invoice_no, r.code, r.station, r.receiver||"", r.address||"", r.pcs, (r.unload_time||"").slice(5)]); });
+  var head = (dc?["日期"]:[]).concat(["分區","貨號","到著簡碼","到著站","收貨人","收貨地址","件數","卸集時間","司機"]);
+  var rows = ROWS.map(function(r){ return (dc?[md(r.ship_date)]:[]).concat([r.region, r.invoice_no, r.code, r.station, r.receiver||"", r.address||"", r.pcs, (r.unload_time||"").slice(5), r.driver||""]); });
   var ri = dc?1:0;
   addSheet(wb, "出貨明細", head, rows, {fill:function(r){ return REGION_COLOR[r[ri]]; }, left:[ri+4, ri+5]});
   var sum = REGION_ORDER.filter(function(r){ return by[r].n; }).map(function(r){ return [r, by[r].n, by[r].pcs, (pcs?Math.round(by[r].pcs/pcs*100):0)+"%", stList(by[r].st)]; });

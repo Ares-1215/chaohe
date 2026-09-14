@@ -56,6 +56,7 @@ const CH = {
       unload_time: pdt ? pdt.cells[1].innerText.trim() : '',
     };
   },
+  // list 每筆可帶 driver（司機姓名）與 date（YYYY-MM-DD），多位司機／多天可一次跑
   async detailStep(list, delay = 250) {
     window.__ch = { idx: 0, total: list.length, done: [], errors: [], running: true };
     const base = 'https://cagweb.hct.com.tw:8080/CAGWEB/';
@@ -82,6 +83,8 @@ const CH = {
           unload_time: d.unload_time,
           cust_code: d.cust_code,
           cust_name: d.cust_name,
+          driver: it.driver || '',
+          date: it.date || '',
         });
       } catch (e) { window.__ch.errors.push({ invoice_no: it.invoice_no, err: String(e) }); }
       window.__ch.idx++;
@@ -91,10 +94,21 @@ const CH = {
     return window.__ch.done.length;
   },
   // C. 直接從瀏覽器分頁 POST 到 Edge Function（實測 cagweb 分頁可打 Supabase；不必走 PowerShell）
-  async uploadStep(dateISO, token, edge = 'https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/chaohe') {
-    const r = await fetch(edge, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'upload', token, date: dateISO, rows: window.__ch.done }) });
+  // 上傳是「整日覆蓋」：只抓其中一位司機時，要先把庫裡該日既有資料（另一位司機）撈回來合併再上傳
+  async uploadStep(dateISO, token, rows, edge = 'https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/chaohe') {
+    rows = rows || window.__ch.done;
+    const r = await fetch(edge, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'upload', token, date: dateISO, rows }) });
     return { status: r.status, body: await r.text() };
+  },
+  async mergeUpload(dateISO, token, newRows, edge = 'https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/chaohe') {
+    const r = await fetch(edge, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'range', from: dateISO, to: dateISO }) });
+    const old = ((await r.json()).rows || []);
+    const drivers = new Set(newRows.map(x => x.driver));
+    const keep = old.filter(x => !drivers.has(x.driver || ''));   // 這次沒重抓的司機保留舊資料
+    const seen = new Set(newRows.map(x => x.invoice_no));
+    const merged = newRows.concat(keep.filter(x => !seen.has(x.invoice_no)));
+    return CH.uploadStep(dateISO, token, merged, edge);
   },
 };
 window.CH = CH;

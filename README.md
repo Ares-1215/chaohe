@@ -1,6 +1,6 @@
 # 朝和餅舖 出貨分區統計
 
-每日從貨物追蹤系統抓 4106 彰化「74257 黃世良」卸集明細，只留客戶代號 05964550009 朝和餅舖，
+每日從貨物追蹤系統抓 4106 彰化「74257 黃世良」與「64237 蔣廷彧」兩位司機的卸集明細，只留客戶代號 05964550009 朝和餅舖，
 依到著站分區（北一／北二／桃竹／中／彰嘉／南）後顯示並可匯出 Excel。
 
 - 網址：https://ares-1215.github.io/chaohe/（無通行碼；含收件人姓名地址，勿外傳）
@@ -25,7 +25,10 @@
 2. **B 逐筆明細（8080）**：導到任一貨號 `https://cagweb.hct.com.tw:8080/CAGWEB/C_PIKAM020.aspx?pACT=C_PISDR320&pINVOICE_NO=<貨號>&pADDITION_NO=000&pNo=<貨號>`
    注入 `CH` 物件＋清單，跑 `CH.detailStep(list)`；輪詢 `window.__ch.running`。
    每筆同源 fetch 託運資料＋ `C_PIKAM022.ashx`（收件地址顯示號碼版），兩版遮罩互補合成完整地址。約 0.8 秒/筆。
-3. **C 上傳**：同一分頁 `CH.uploadStep('YYYY-MM-DD', token)`（token 在 `tools/config.local.json`，不進版控）。
+3. **C 上傳**：同一分頁 `CH.uploadStep('YYYY-MM-DD', token, rows)`（token 在 `tools/config.local.json`，不進版控）。
+   兩位司機（pOPE=74257 黃世良、64237 蔣廷彧）的清單各跑一次 A，合併後一起跑 B（每筆帶 `driver`/`date`），
+   再依日期分組上傳。**上傳是整日覆蓋**，只重抓其中一位時用 `CH.mergeUpload()` 先把庫裡另一位的資料撈回合併。
+   欄位 `driver` 存司機姓名，網頁明細與 Excel 都有「司機」欄，KPI 顯示兩位各幾筆幾件。
 
 踩雷：
 - 8081 與 8080 是不同來源，跨域 fetch 會 `Failed to fetch`，所以清單與明細要分兩段、靠 javascript_tool 回傳值搬資料。
