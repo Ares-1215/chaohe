@@ -59,8 +59,7 @@ tr.clk:hover td{filter:brightness(.95)}
 <header>
   <h1>🥮 朝和餅舖 出貨分區統計</h1>
   <span class="tag">客戶 05964550009</span>
-  <span class="tag">卸集：4106 彰化 74257 黃世良</span>
-  <span class="tag" id="upd"></span>
+  <span class="tag" id="upd" style="display:none"></span>
 </header>
 
 <main>
@@ -97,16 +96,6 @@ tr.clk:hover td{filter:brightness(.95)}
     <div class="tblwrap" id="detTbl"></div>
   </div>
 
-  <div class="card">
-    <h2>說明</h2>
-    <div class="hint">
-      資料來源：貨物追蹤系統「PDT員工別輸入件數查詢」→ 4106 彰化 → 74257 黃世良「卸集」明細，逐筆讀取十碼貨號託運資料，只保留客戶代號 05964550009 朝和餅舖。<br>
-      分區依「新竹物流各區」對照表（<code>regions.js</code>），到著站不在表內者列為「未分區」。<br>
-      單日模式：◀ ▶ 跳到前一個／後一個有資料的日期，也可直接在日期框輸入。整月模式：◀ ▶ 切月，月報含逐日彙總。<br>
-      更新方式：對 Claude 說「<b>更新朝和</b>」即可抓最新日期入庫（需先登入貨物追蹤系統）。<br>
-      本頁含收件人姓名與地址，請勿外傳網址。
-    </div>
-  </div>
 </main>
 
 <script src="regions.js?v=3"></script>
