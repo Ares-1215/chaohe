@@ -86,6 +86,13 @@ tr.clk:hover td{filter:brightness(.95)}
     <div class="tblwrap" id="regTbl"></div>
   </div>
 
+  <div class="card" id="vipCard" style="display:none">
+    <h2 id="vipTitle"></h2>
+    <div class="kpis" id="vipKpis" style="margin-bottom:12px"></div>
+    <div class="tblwrap" id="vipReg" style="margin-bottom:12px"></div>
+    <div class="tblwrap" id="vipTbl"></div>
+  </div>
+
   <div class="card" id="dayCard" style="display:none">
     <h2>逐日彙總 <span class="hint">（點日期列可切到該日）</span></h2>
     <div class="tblwrap" id="dayTbl"></div>
@@ -98,7 +105,7 @@ tr.clk:hover td{filter:brightness(.95)}
 
 </main>
 
-<script src="regions.js?v=3"></script>
+<script src="regions.js?v=4"></script>
 <script>
 /* 只用 ES2018 以內語法（公司電腦 Edge 版本可能較舊，避免 ??= / ?. 造成整頁不執行） */
 var EDGE = "https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/chaohe";
@@ -203,6 +210,7 @@ function byDay(rows){
   var bd = {}; rows.forEach(function(r){ if(!bd[r.ship_date]) bd[r.ship_date]={n:0,pcs:0,reg:{}}; var d=bd[r.ship_date]; d.n++; d.pcs+=r.pcs||0; d.reg[r.region]=(d.reg[r.region]||0)+1; });
   return bd;
 }
+function vipRows(rows){ return rows.filter(function(r){ return (r.receiver||"").indexOf(VIP.keyword)>=0; }); }
 function stList(st){ return Object.keys(st).sort(function(a,b){ return st[b]-st[a]; }).map(function(k){ return k+" "+st[k]; }).join("、"); }
 function render(){
   var vis = ROWS.filter(function(r){ return !HIDE[r.region]; });
@@ -227,6 +235,22 @@ function render(){
     h += '<tr style="background:#'+REGION_COLOR[r]+'"><td><b>'+r+'</b></td><td class="mono">'+b.n+'</td><td class="mono">'+b.pcs+'</td><td class="mono">'+(pcs?Math.round(b.pcs/pcs*100):0)+'%</td><td class="l" style="white-space:normal">'+stList(b.st)+'</td></tr>'; });
   h += '<tr class="total"><td>合計</td><td class="mono">'+tot+'</td><td class="mono">'+pcs+'</td><td>100%</td><td></td></tr></tbody></table>';
   $("regTbl").innerHTML = tot ? h : '<div class="hint">此範圍無資料</div>';
+  // 大客戶（寶島眼鏡）
+  var V = vipRows(ROWS), dcv = MODE==="month";
+  if(V.length){
+    var vby = summarize(V), vpcs = V.reduce(function(s,r){ return s+(r.pcs||0); },0);
+    $("vipTitle").textContent = "大客戶："+VIP.name+"（收貨人含「"+VIP.keyword+"」）";
+    $("vipKpis").innerHTML = [["筆數", V.length, "占全部 "+(tot?Math.round(V.length/tot*100):0)+"%"],["件數", vpcs, "占全部 "+(pcs?Math.round(vpcs/pcs*100):0)+"%"],["到著站數", Object.keys(V.reduce(function(o,r){ o[r.station]=1; return o; },{})).length, ""]]
+      .map(function(k){ return '<div class="kpi"><div class="l">'+k[0]+'</div><div class="v mono">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>'; }).join("");
+    var vh = '<table><thead><tr><th>分區</th><th>筆數</th><th>件數</th><th style="text-align:left">到著站（筆數）</th></tr></thead><tbody>';
+    REGION_ORDER.forEach(function(r){ var b=vby[r]; if(!b.n) return; vh += '<tr style="background:#'+REGION_COLOR[r]+'"><td><b>'+r+'</b></td><td class="mono">'+b.n+'</td><td class="mono">'+b.pcs+'</td><td class="l" style="white-space:normal">'+stList(b.st)+'</td></tr>'; });
+    vh += '<tr class="total"><td>合計</td><td class="mono">'+V.length+'</td><td class="mono">'+vpcs+'</td><td></td></tr></tbody></table>';
+    $("vipReg").innerHTML = vh;
+    var vd = '<table><thead><tr>'+(dcv?"<th>日期</th>":"")+'<th>分區</th><th>貨號</th><th>到著簡碼</th><th>到著站</th><th>收貨人</th><th>收貨地址</th><th>件數</th><th>卸集時間</th><th>司機</th></tr></thead><tbody>';
+    V.forEach(function(r){ vd += '<tr style="background:#'+REGION_COLOR[r.region]+'">'+(dcv?'<td>'+md(r.ship_date)+'</td>':"")+'<td><b>'+r.region+'</b></td><td class="mono">'+r.invoice_no+'</td><td class="mono">'+r.code+'</td><td>'+r.station+'</td><td class="l">'+(r.receiver||"")+'</td><td class="l">'+(r.address||"")+'</td><td class="mono">'+r.pcs+'</td><td class="mono">'+(r.unload_time||"").slice(5)+'</td><td>'+(r.driver||"")+'</td></tr>'; });
+    $("vipTbl").innerHTML = vd + "</tbody></table>";
+    $("vipCard").style.display = "";
+  } else $("vipCard").style.display = "none";
   // 逐日
   if(MODE==="month"){
     var bd = byDay(ROWS), regs = REGION_ORDER.filter(function(r){ return by[r].n; });
@@ -302,9 +326,15 @@ $("xlsBtn").onclick = async function(){
   var rows = ROWS.map(function(r){ return (dc?[md(r.ship_date)]:[]).concat([r.region, r.invoice_no, r.code, r.station, r.receiver||"", r.address||"", r.pcs, (r.unload_time||"").slice(5), r.driver||""]); });
   var ri = dc?1:0;
   addSheet(wb, "出貨明細", head, rows, {fill:function(r){ return REGION_COLOR[r[ri]]; }, left:[ri+4, ri+5]});
-  var sum = REGION_ORDER.filter(function(r){ return by[r].n; }).map(function(r){ return [r, by[r].n, by[r].pcs, (pcs?Math.round(by[r].pcs/pcs*100):0)+"%", stList(by[r].st)]; });
-  sum.push(["合計", tot, pcs, "100%", ""]);
-  addSheet(wb, "分區彙總", ["分區","筆數","件數","占比(件)","到著站（筆數）"], sum, {fill:function(r){ return REGION_COLOR[r[0]]||"EFEFEF"; }, left:[4], bold:function(r){ return r[0]==="合計"; }});
+  var V = vipRows(ROWS), vby = summarize(V), vpcs = V.reduce(function(s,r){ return s+(r.pcs||0); },0);
+  var sum = REGION_ORDER.filter(function(r){ return by[r].n; }).map(function(r){ return [r, by[r].n, by[r].pcs, (pcs?Math.round(by[r].pcs/pcs*100):0)+"%", vby[r].n, vby[r].pcs, stList(by[r].st)]; });
+  sum.push(["合計", tot, pcs, "100%", V.length, vpcs, ""]);
+  addSheet(wb, "分區彙總", ["分區","筆數","件數","占比(件)",VIP.name+"筆數",VIP.name+"件數","到著站（筆數）"], sum, {fill:function(r){ return REGION_COLOR[r[0]]||"EFEFEF"; }, left:[6], bold:function(r){ return r[0]==="合計"; }});
+  if(V.length){
+    var vrows = V.map(function(r){ return (dc?[md(r.ship_date)]:[]).concat([r.region, r.invoice_no, r.code, r.station, r.receiver||"", r.address||"", r.pcs, (r.unload_time||"").slice(5), r.driver||""]); });
+    vrows.push((dc?[""]:[]).concat(["合計","","","","","",vpcs,"",""]));
+    addSheet(wb, VIP.name, head, vrows, {fill:function(r){ return r[ri]==="合計"?"EFEFEF":REGION_COLOR[r[ri]]; }, left:[ri+4, ri+5], bold:function(r){ return r[ri]==="合計"; }});
+  }
   if(dc){
     var bd = byDay(ROWS), regs = REGION_ORDER.filter(function(r){ return by[r].n; });
     var drows = Object.keys(bd).sort().map(function(d){ return [md(d), "週"+wd(d)].concat(regs.map(function(r){ return bd[d].reg[r]||0; }), [bd[d].n, bd[d].pcs]); });
